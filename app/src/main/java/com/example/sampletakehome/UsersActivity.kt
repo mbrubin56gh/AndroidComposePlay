@@ -9,19 +9,21 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.flowWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.sampletakehome.SampleUsersApplication.Companion.applicationComponent
 import com.example.sampletakehome.UsersViewModel.UsersUIState
 import com.example.sampletakehome.databinding.ActivityUsersBinding
 import com.example.sampletakehome.networking.User
 import kotlinx.coroutines.launch
 
 class UsersActivity : AppCompatActivity() {
-    private val viewModel: UsersViewModel by viewModels()
+    private val viewModel: UsersViewModel by viewModels {
+        UsersViewModel.Factory(applicationComponent.usersRepository())
+    }
     private lateinit var binding: ActivityUsersBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityUsersBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+
         configureRecyclerView()
         collectUiState()
     }
