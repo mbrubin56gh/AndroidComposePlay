@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="user_row_height">96dp</dimen>
+    <dimen name="users_list_padding">24dp</dimen>
+    <dimen name="user_list_row_padding">4dp</dimen>
+</resources>
