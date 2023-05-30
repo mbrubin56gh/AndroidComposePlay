@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class UsersViewModel(usersRepository: UsersRepository) : ViewModel() {
+class UsersViewModel(val usersRepository: UsersRepository) : ViewModel() {
     sealed class UsersUIState {
         object Fetching : UsersUIState()
         sealed class Fetched : UsersUIState() {
@@ -24,10 +24,14 @@ class UsersViewModel(usersRepository: UsersRepository) : ViewModel() {
 
     init {
         viewModelScope.launch {
-            _usersUiState.value = when (val users = usersRepository.users()) {
-                UsersResponse.Error -> UsersUIState.Fetched.Error
-                is UsersResponse.Success -> UsersUIState.Fetched.Success(users.users)
-            }
+            refreshUsers()
+        }
+    }
+
+    suspend fun refreshUsers() {
+        _usersUiState.value = when (val users = usersRepository.users()) {
+            UsersResponse.Error -> UsersUIState.Fetched.Error
+            is UsersResponse.Success -> UsersUIState.Fetched.Success(users.users)
         }
     }
 

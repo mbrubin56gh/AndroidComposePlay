@@ -24,8 +24,20 @@ class UsersActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityUsersBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        configureSwipeToRefresh()
         configureRecyclerView()
         collectUiState()
+    }
+
+    private fun configureSwipeToRefresh() {
+        binding.swipeToRefresh.setOnRefreshListener {
+            lifecycleScope.launch {
+                // Rely on the UIState Flow collection to update only when we're in the appropriate
+                // lifecycle states.
+                viewModel.refreshUsers()
+                binding.swipeToRefresh.isRefreshing = false
+            }
+        }
     }
 
     private fun configureRecyclerView() {
