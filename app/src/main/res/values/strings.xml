@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">SampleTakeHome</string>
+    <string name="error_fetching_contacts">Error fetching contacts</string>
+    <string name="user_image_content_description">A user\'s image</string>
 </resources>
