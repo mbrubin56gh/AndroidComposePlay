@@ -9,12 +9,15 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.flowWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.sampletakehome.SampleUsersApplication.Companion.applicationComponent
 import com.example.sampletakehome.UsersViewModel.UsersUIState
 import com.example.sampletakehome.databinding.ActivityUsersBinding
 import kotlinx.coroutines.launch
 
 class UsersActivity : AppCompatActivity() {
-    private val viewModel: UsersViewModel by viewModels()
+    private val viewModel: UsersViewModel by viewModels {
+        UsersViewModel.Factory(applicationComponent.usersRepository())
+    }
     private lateinit var binding: ActivityUsersBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,9 +48,9 @@ class UsersActivity : AppCompatActivity() {
             // https://itnext.io/differences-in-methods-of-collecting-kotlin-flows-3d1d4efd1c2
             // and discussion at
             // https://developer.android.com/topic/libraries/architecture/coroutines
-//            repeatOnLifecycle(Lifecycle.State.STARTED) {
-//                viewModel.usersUiState.collect { updateUiState(it) }
-//            }
+            // repeatOnLifecycle(Lifecycle.State.STARTED) {
+            //      viewModel.usersUiState.collect { updateUiState(it) }
+            // }
         }
     }
 
