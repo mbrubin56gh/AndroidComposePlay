@@ -7,7 +7,7 @@ import javax.inject.Scope
 import kotlin.annotation.AnnotationRetention.RUNTIME
 
 @ApplicationScope
-@Component(modules = [NetworkingModule::class])
+@Component(modules = [ApplicationModule::class, NetworkingModule::class])
 interface ApplicationComponent {
     fun usersRepository(): UsersRepository
 }

@@ -1,24 +1,32 @@
 package com.example.sampletakehome.repository
 
 import com.example.sampletakehome.User
+import com.example.sampletakehome.database.UserEntity
+import com.example.sampletakehome.database.UsersDatabase
+import com.example.sampletakehome.networking.UserNetworkModel
 import com.example.sampletakehome.networking.UsersService
-import com.example.sampletakehome.toUsers
-import logcat.asLog
-import logcat.logcat
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
-sealed class UsersResponse {
-    class Success(val users: List<User>) : UsersResponse()
-    object Error : UsersResponse()
+class UsersRepository @Inject constructor(
+    private val usersService: UsersService, private val usersDatabase: UsersDatabase
+) {
+    suspend fun refreshUsers() {
+        usersDatabase.userDao().insertAll(usersService.users().users.toUserEntities())
+    }
+
+    fun users(): Flow<List<User>> = usersDatabase.userDao().getAll().map { it.toUsers() }
 }
 
-class UsersRepository @Inject constructor(private val usersService: UsersService) {
-    suspend fun users(): UsersResponse {
-        return try {
-            UsersResponse.Success(usersService.users().users.toUsers())
-        } catch (e: Exception) {
-            logcat { e.asLog() }
-            UsersResponse.Error
-        }
-    }
-}
+fun UserEntity.toUser(): User = User(id = id, firstName = firstName, imageUrl = imageUrl)
+
+fun List<UserEntity>.toUsers(): List<User> = map { it.toUser() }
+
+fun UserNetworkModel.toUserEntity() = UserEntity(
+    id = id,
+    firstName = firstName,
+    imageUrl = imageUrl
+)
+
+fun List<UserNetworkModel>.toUserEntities() = map { it.toUserEntity() }
