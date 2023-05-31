@@ -5,8 +5,6 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.sampletakehome.User
 import com.example.sampletakehome.repository.UsersRepository
-import com.example.sampletakehome.userslist.UsersViewModel.UsersUIState.Fetched
-import com.example.sampletakehome.userslist.UsersViewModel.UsersUIState.Fetching
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -21,7 +19,7 @@ class UsersViewModel(private val usersRepository: UsersRepository) : ViewModel()
         }
     }
 
-    private val _usersUiState: MutableStateFlow<UsersUIState> = MutableStateFlow(Fetching)
+    private val _usersUiState: MutableStateFlow<UsersUIState> = MutableStateFlow(UsersUIState.Fetching)
     val usersUiState = _usersUiState.asStateFlow()
 
     private val _selectedUser: MutableStateFlow<User?> = MutableStateFlow(null)
@@ -30,7 +28,7 @@ class UsersViewModel(private val usersRepository: UsersRepository) : ViewModel()
     init {
         viewModelScope.launch {
             usersRepository.users().collect { users ->
-                _usersUiState.value = Fetched.Success(users)
+                _usersUiState.value = UsersUIState.Fetched.Success(users)
             }
         }
         viewModelScope.launch { refreshUsers() }
@@ -45,8 +43,8 @@ class UsersViewModel(private val usersRepository: UsersRepository) : ViewModel()
         try {
             usersRepository.refreshUsers()
         } catch (e: Exception) {
-            if (_usersUiState.value is Fetching) {
-                _usersUiState.value = Fetched.Error
+            if (_usersUiState.value is UsersUIState.Fetching) {
+                _usersUiState.value = UsersUIState.Fetched.Error
             } else {
                 logcat { "Error refreshing users." }
             }
@@ -57,7 +55,7 @@ class UsersViewModel(private val usersRepository: UsersRepository) : ViewModel()
         _selectedUser.value = user
     }
 
-    fun onSelectedUserHandled() {
+    fun onSelectedUserDismissed() {
         _selectedUser.value = null
     }
 

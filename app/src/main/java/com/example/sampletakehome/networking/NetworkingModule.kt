@@ -1,7 +1,6 @@
 package com.example.sampletakehome.networking
 
 import com.squareup.moshi.Moshi
-import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import dagger.Module
 import dagger.Provides
 import okhttp3.OkHttpClient
@@ -11,7 +10,7 @@ import retrofit2.converter.moshi.MoshiConverterFactory
 @Module
 object NetworkingModule {
     @Provides
-    fun providesMoshi(): Moshi = Moshi.Builder().addLast(KotlinJsonAdapterFactory()).build()
+    fun providesMoshi(): Moshi = Moshi.Builder().build()
 
     @Provides
     fun providesUsersRetrofitBuilder(moshi: Moshi): Retrofit.Builder = Retrofit.Builder()

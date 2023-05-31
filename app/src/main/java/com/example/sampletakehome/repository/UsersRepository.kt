@@ -13,7 +13,8 @@ class UsersRepository @Inject constructor(
     private val usersService: UsersService, private val usersDatabase: UsersDatabase
 ) {
     suspend fun refreshUsers() {
-        usersDatabase.userDao().insertAll(usersService.users().users.toUserEntities())
+        val users = usersService.users()
+        usersDatabase.userDao().insertAll(users.users.toUserEntities())
     }
 
     fun users(): Flow<List<User>> = usersDatabase.userDao().getAll().map { it.toUsers() }
