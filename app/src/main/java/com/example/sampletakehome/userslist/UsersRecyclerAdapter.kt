@@ -1,4 +1,4 @@
-package com.example.sampletakehome
+package com.example.sampletakehome.userslist
 
 import android.graphics.drawable.ColorDrawable
 import android.view.LayoutInflater
@@ -9,12 +9,17 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import coil.load
 import coil.transform.CircleCropTransformation
+import com.example.sampletakehome.R
+import com.example.sampletakehome.User
 import com.example.sampletakehome.databinding.UserRowBinding
 
-class UsersRecyclerAdapter :
+class UsersRecyclerAdapter(private val onUserClicked: (User) -> Unit) :
     ListAdapter<User, UsersRecyclerAdapter.UserViewHolder>(UserDiffCallBack()) {
 
-    class UserViewHolder(private val binding: UserRowBinding) :
+    class UserViewHolder(
+        private val binding: UserRowBinding,
+        private val onUserClicked: (User) -> Unit
+    ) :
         RecyclerView.ViewHolder(binding.root) {
         fun onBind(user: User) {
             binding.userName.text = user.firstName
@@ -24,6 +29,7 @@ class UsersRecyclerAdapter :
                 val context = binding.userName.context
                 placeholder(ColorDrawable(ContextCompat.getColor(context, R.color.grey_50)))
             }
+            binding.root.setOnClickListener { onUserClicked(user) }
         }
     }
 
@@ -33,7 +39,7 @@ class UsersRecyclerAdapter :
     ): UserViewHolder {
         val inflater = LayoutInflater.from(parent.context)
         val binding = UserRowBinding.inflate(inflater, parent, false)
-        return UserViewHolder(binding)
+        return UserViewHolder(binding, onUserClicked)
     }
 
     override fun onBindViewHolder(holder: UserViewHolder, position: Int) {

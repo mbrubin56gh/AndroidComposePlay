@@ -1,4 +1,4 @@
-package com.example.sampletakehome
+package com.example.sampletakehome.userslist
 
 import android.os.Bundle
 import android.view.View.GONE
@@ -10,8 +10,10 @@ import androidx.lifecycle.flowWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.sampletakehome.SampleUsersApplication.Companion.applicationComponent
-import com.example.sampletakehome.UsersViewModel.UsersUIState
+import com.example.sampletakehome.User
 import com.example.sampletakehome.databinding.ActivityUsersBinding
+import com.example.sampletakehome.userdetail.UserDetailActivity
+import com.example.sampletakehome.userslist.UsersViewModel.UsersUIState
 import kotlinx.coroutines.launch
 
 class UsersActivity : AppCompatActivity() {
@@ -27,6 +29,7 @@ class UsersActivity : AppCompatActivity() {
         configureSwipeToRefresh()
         configureRecyclerView()
         collectUiState()
+        listenForUserSelection()
     }
 
     private fun configureSwipeToRefresh() {
@@ -44,7 +47,7 @@ class UsersActivity : AppCompatActivity() {
         with(binding.contactsList) {
             setHasFixedSize(true)
             layoutManager = LinearLayoutManager(this@UsersActivity)
-            adapter = UsersRecyclerAdapter()
+            adapter = UsersRecyclerAdapter(onUserClicked = { user -> viewModel.selectUser(user) })
         }
     }
 
@@ -63,6 +66,19 @@ class UsersActivity : AppCompatActivity() {
             // repeatOnLifecycle(Lifecycle.State.STARTED) {
             //      viewModel.usersUiState.collect { updateUiState(it) }
             // }
+        }
+    }
+
+    private fun listenForUserSelection() {
+        lifecycleScope.launch {
+            viewModel.selectedUser
+                .flowWithLifecycle(lifecycle, Lifecycle.State.STARTED)
+                .collect {
+                    it?.let {
+                        UserDetailActivity.startActivity(it, this@UsersActivity)
+                        viewModel.onSelectedUserHandled()
+                    }
+                }
         }
     }
 

@@ -1,11 +1,12 @@
-package com.example.sampletakehome
+package com.example.sampletakehome.userslist
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.sampletakehome.UsersViewModel.UsersUIState.Fetched
-import com.example.sampletakehome.UsersViewModel.UsersUIState.Fetching
+import com.example.sampletakehome.User
 import com.example.sampletakehome.repository.UsersRepository
+import com.example.sampletakehome.userslist.UsersViewModel.UsersUIState.Fetched
+import com.example.sampletakehome.userslist.UsersViewModel.UsersUIState.Fetching
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -22,6 +23,9 @@ class UsersViewModel(private val usersRepository: UsersRepository) : ViewModel()
 
     private val _usersUiState: MutableStateFlow<UsersUIState> = MutableStateFlow(Fetching)
     val usersUiState = _usersUiState.asStateFlow()
+
+    private val _selectedUser: MutableStateFlow<User?> = MutableStateFlow(null)
+    val selectedUser = _selectedUser.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -47,6 +51,14 @@ class UsersViewModel(private val usersRepository: UsersRepository) : ViewModel()
                 logcat { "Error refreshing users." }
             }
         }
+    }
+
+    fun selectUser(user: User) {
+        _selectedUser.value = user
+    }
+
+    fun onSelectedUserHandled() {
+        _selectedUser.value = null
     }
 
     class Factory(private val usersRepository: UsersRepository) : ViewModelProvider.Factory {

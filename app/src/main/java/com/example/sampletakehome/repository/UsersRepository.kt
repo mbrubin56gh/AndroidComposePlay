@@ -17,6 +17,8 @@ class UsersRepository @Inject constructor(
     }
 
     fun users(): Flow<List<User>> = usersDatabase.userDao().getAll().map { it.toUsers() }
+
+    suspend fun getUser(userId: Long) = usersDatabase.userDao().getOne(userId).toUser()
 }
 
 fun UserEntity.toUser(): User = User(id = id, firstName = firstName, imageUrl = imageUrl)
