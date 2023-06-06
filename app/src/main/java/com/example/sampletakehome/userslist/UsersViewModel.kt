@@ -3,6 +3,7 @@ package com.example.sampletakehome.userslist
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.CreationExtras
 import com.example.sampletakehome.User
 import com.example.sampletakehome.repository.UsersRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -10,7 +11,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import logcat.logcat
 
-class UsersViewModel(private val usersRepository: UsersRepository) : ViewModel() {
+class UsersViewModel(
+    private val usersRepository: UsersRepository,
+) : ViewModel() {
     sealed class UsersUIState {
         object Fetching : UsersUIState()
         sealed class Fetched : UsersUIState() {
@@ -19,11 +22,9 @@ class UsersViewModel(private val usersRepository: UsersRepository) : ViewModel()
         }
     }
 
-    private val _usersUiState: MutableStateFlow<UsersUIState> = MutableStateFlow(UsersUIState.Fetching)
+    private val _usersUiState: MutableStateFlow<UsersUIState> =
+        MutableStateFlow(UsersUIState.Fetching)
     val usersUiState = _usersUiState.asStateFlow()
-
-    private val _selectedUser: MutableStateFlow<User?> = MutableStateFlow(null)
-    val selectedUser = _selectedUser.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -51,17 +52,11 @@ class UsersViewModel(private val usersRepository: UsersRepository) : ViewModel()
         }
     }
 
-    fun selectUser(user: User) {
-        _selectedUser.value = user
-    }
-
-    fun onSelectedUserDismissed() {
-        _selectedUser.value = null
-    }
+    suspend fun getUser(userId: Long): User = usersRepository.getUser(userId)
 
     class Factory(private val usersRepository: UsersRepository) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
             return UsersViewModel(usersRepository) as T
         }
     }

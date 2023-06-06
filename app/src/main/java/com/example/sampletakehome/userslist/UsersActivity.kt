@@ -2,11 +2,7 @@ package com.example.sampletakehome.userslist
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -32,6 +28,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -48,12 +45,20 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NamedNavArgument
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.sampletakehome.R
 import com.example.sampletakehome.SampleUsersApplication.Companion.applicationComponent
 import com.example.sampletakehome.User
 import com.example.sampletakehome.theme.MyApplicationTheme
+import com.example.sampletakehome.userslist.Route.USER
+import com.example.sampletakehome.userslist.Route.USERS
 import com.example.sampletakehome.userslist.UsersViewModel.UsersUIState
 import kotlinx.coroutines.launch
 
@@ -66,44 +71,73 @@ class UsersActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    Users(Modifier)
+                    Navigation(
+                        modifier = Modifier,
+                        viewModel = viewModel(
+                            factory = UsersViewModel.Factory(applicationComponent.usersRepository())
+                        )
+                    )
                 }
             }
         }
     }
 }
 
+enum class Route(
+    val routeName: String,
+    val arguments: List<NamedNavArgument> = emptyList()
+) {
+    USERS("users"),
+    USER("user/{userId}", listOf(navArgument("userId") { type = NavType.LongType }));
+
+    companion object {
+        fun pathFromUserId(userId: Long): String = "user/$userId"
+    }
+}
+
+@Composable
+fun Navigation(
+    modifier: Modifier = Modifier,
+    viewModel: UsersViewModel
+) {
+    val navController = rememberNavController()
+    NavHost(navController = navController, startDestination = "users") {
+        composable(route = USERS.routeName, arguments = USERS.arguments) {
+            Users(
+                modifier,
+                viewModel,
+                onSelectedUser = { user -> navController.navigate(Route.pathFromUserId(user.id)) })
+        }
+        composable(USER.routeName, USER.arguments) { backStackEntry ->
+            val userId = requireNotNull(backStackEntry.arguments?.getLong("userId")) {
+                "No userId specified when requesting navigation to a user detail view"
+            }
+            UserDetail(
+                userId = userId,
+                getUser = viewModel::getUser
+            )
+        }
+    }
+}
+
 @Composable
 fun Users(
-    modifier: Modifier = Modifier,
-    viewModel: UsersViewModel = viewModel(
+    modifier: Modifier = Modifier, viewModel: UsersViewModel = viewModel(
         factory = UsersViewModel.Factory(applicationComponent.usersRepository())
-    )
+    ),
+    onSelectedUser: (User) -> Unit
 ) {
     val userUiState by viewModel.usersUiState.collectAsStateWithLifecycle()
-    val selectedUser by viewModel.selectedUser.collectAsStateWithLifecycle()
     when (val state = userUiState) {
         UsersUIState.Fetched.Error -> FetchErrorMessage(modifier)
         UsersUIState.Fetching -> FetchingProgressBar(modifier)
         is UsersUIState.Fetched.Success -> {
-            // Baby self-handling of navigation. Really, integrating the Compose navigation
-            // library or some alternative would be a better option.
-            val userSelected = selectedUser != null
-            AnimatedVisibility(visible = userSelected, enter = fadeIn(), exit = fadeOut()) {
-                UserDetail(
-                    modifier = modifier,
-                    user = selectedUser,
-                    onBack = viewModel::onSelectedUserDismissed
-                )
-            }
-            AnimatedVisibility(visible = !userSelected, enter = fadeIn(), exit = fadeOut()) {
-                UsersList(
-                    modifier = modifier,
-                    users = state.users,
-                    onUserClicked = { user -> viewModel.selectUser(user) },
-                    refreshUsers = viewModel::refreshUsers
-                )
-            }
+            UsersList(
+                modifier = modifier,
+                users = state.users,
+                onUserClicked = onSelectedUser,
+                refreshUsers = viewModel::refreshUsers
+            )
         }
     }
 }
@@ -133,7 +167,11 @@ fun UsersList(
     ) {
         LazyColumn(modifier = modifier) {
             items(items = users, key = { it.id }) { user ->
-                User(modifier = modifier, user = user, onUserClicked = onUserClicked)
+                User(
+                    modifier = modifier,
+                    user = user,
+                    onUserClicked = onUserClicked
+                )
             }
         }
 
@@ -147,18 +185,12 @@ fun UsersList(
 
 @Composable
 fun UserDetail(
-    modifier: Modifier = Modifier,
-    user: User?,
-    onBack: () -> Unit
+    modifier: Modifier = Modifier, userId: Long, getUser: suspend (Long) -> User
 ) {
-    // Baby, home-grown navigation. Really, this should be handled by the the Compose navigation
-    // library or one of the alternatives.
-    BackHandler(enabled = user != null, onBack = onBack)
-    user?.let {
-        Box(modifier = modifier.fillMaxSize()) {
-            User(user = user)
-        }
+    val user: User? by produceState(initialValue = null as User?, key1 = userId) {
+        value = getUser(userId)
     }
+    user?.let { User(user = it) } ?: CircularProgressIndicator()
 }
 
 @Composable
@@ -184,8 +216,7 @@ fun User(
 
 @Composable
 fun UserImage(
-    modifier: Modifier = Modifier,
-    url: String
+    modifier: Modifier = Modifier, url: String
 ) {
     AsyncImage(
         model = ImageRequest.Builder(LocalContext.current).data(url).crossfade(true).build(),
@@ -202,13 +233,10 @@ fun UserImage(
 
 @Composable
 fun UserLabel(
-    modifier: Modifier = Modifier,
-    name: String
+    modifier: Modifier = Modifier, name: String
 ) {
     Text(
-        modifier = modifier,
-        text = name,
-        style = MaterialTheme.typography.displaySmall
+        modifier = modifier, text = name, style = MaterialTheme.typography.displaySmall
     )
 }
 
