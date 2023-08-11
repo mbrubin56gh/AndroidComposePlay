@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NamedNavArgument
+import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -73,10 +74,13 @@ class UsersActivity : ComponentActivity() {
                     val viewModel = viewModel<UsersViewModel>(
                         factory = UsersViewModel.Factory(applicationComponent.usersRepository())
                     )
+                    val navController = rememberNavController()
                     Navigation(
                         modifier = Modifier,
+                        navController = navController,
                         usersUIState = viewModel.usersUiState.collectAsStateWithLifecycle().value,
                         getUser = viewModel::getUser,
+                        onSelectedUser = { user -> navController.navigate(Route.pathFromUserId(user.id)) },
                         onRefreshUsers = viewModel::refreshUsers
                     )
                 }
@@ -89,7 +93,8 @@ enum class Route(
     val routeName: String,
     val arguments: List<NamedNavArgument> = emptyList()
 ) {
-    USERS("users"), USER(
+    USERS("users"),
+    USER(
         "user/{userId}", listOf(navArgument("userId") { type = NavType.LongType })
     );
 
@@ -101,17 +106,20 @@ enum class Route(
 @Composable
 fun Navigation(
     modifier: Modifier = Modifier,
+    navController: NavHostController,
     usersUIState: UsersUIState,
     onRefreshUsers: suspend () -> Unit,
+    onSelectedUser: (User) -> Unit,
     getUser: suspend (Long) -> User
 ) {
-    val navController = rememberNavController()
     NavHost(navController = navController, startDestination = USERS.routeName) {
         composable(route = USERS.routeName, arguments = USERS.arguments) {
-            Users(modifier,
+            Users(
+                modifier,
                 usersUIState,
                 onRefreshUsers = onRefreshUsers,
-                onSelectedUser = { user -> navController.navigate(Route.pathFromUserId(user.id)) })
+                onSelectedUser = onSelectedUser
+            )
         }
         composable(USER.routeName, USER.arguments) { backStackEntry ->
             val userId = requireNotNull(backStackEntry.arguments?.getLong("userId")) {
@@ -172,7 +180,9 @@ fun UsersList(
         LazyColumn(modifier = modifier) {
             items(items = users, key = { it.id }) { user ->
                 User(
-                    modifier = modifier, user = user, onUserClicked = onUserClicked
+                    modifier = modifier,
+                    user = user,
+                    onUserClicked = onUserClicked
                 )
             }
         }
