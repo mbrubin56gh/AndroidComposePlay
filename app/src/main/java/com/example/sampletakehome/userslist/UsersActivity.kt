@@ -86,7 +86,8 @@ class UsersActivity : ComponentActivity() {
 }
 
 enum class Route(
-    val routeName: String, val arguments: List<NamedNavArgument> = emptyList()
+    val routeName: String,
+    val arguments: List<NamedNavArgument> = emptyList()
 ) {
     USERS("users"), USER(
         "user/{userId}", listOf(navArgument("userId") { type = NavType.LongType })
@@ -185,7 +186,8 @@ fun UsersList(
 
 @Composable
 fun UserDetail(
-    userId: Long, getUser: suspend (Long) -> User
+    userId: Long,
+    getUser: suspend (Long) -> User
 ) {
     val user: User? by produceState(initialValue = null as User?, key1 = userId) {
         value = getUser(userId)
@@ -195,7 +197,9 @@ fun UserDetail(
 
 @Composable
 fun User(
-    modifier: Modifier = Modifier, user: User, onUserClicked: (User) -> Unit = {}
+    modifier: Modifier = Modifier,
+    user: User,
+    onUserClicked: (User) -> Unit = {}
 ) {
     Row(
         modifier = modifier
@@ -212,7 +216,8 @@ fun User(
 
 @Composable
 fun UserImage(
-    modifier: Modifier = Modifier, url: String
+    modifier: Modifier = Modifier,
+    url: String
 ) {
     AsyncImage(
         model = ImageRequest.Builder(LocalContext.current).data(url).crossfade(true).build(),
@@ -229,7 +234,8 @@ fun UserImage(
 
 @Composable
 fun UserLabel(
-    modifier: Modifier = Modifier, name: String
+    modifier: Modifier = Modifier,
+    name: String
 ) {
     Text(
         modifier = modifier, text = name, style = MaterialTheme.typography.displaySmall
