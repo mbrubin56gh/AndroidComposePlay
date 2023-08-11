@@ -118,7 +118,8 @@ fun Navigation(
                 "No userId specified when requesting navigation to a user detail view"
             }
             UserDetail(
-                userId = userId, getUser = getUser
+                userId = userId,
+                getUser = getUser
             )
         }
     }
