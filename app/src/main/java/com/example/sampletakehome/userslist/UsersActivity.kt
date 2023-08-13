@@ -69,7 +69,8 @@ class UsersActivity : ComponentActivity() {
         setContent {
             MyApplicationTheme {
                 Surface(
-                    modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
                 ) {
                     val viewModel = viewModel<UsersViewModel>(
                         factory = UsersViewModel.Factory(applicationComponent.usersRepository())
