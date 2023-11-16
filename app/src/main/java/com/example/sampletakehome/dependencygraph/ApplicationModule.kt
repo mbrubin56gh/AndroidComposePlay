@@ -13,6 +13,7 @@ class ApplicationModule(private val applicationContext: Context) {
     @Provides
     fun providesUsersDatabase(): UsersDatabase = Room.databaseBuilder(
         applicationContext,
-        UsersDatabase::class.java, "users-database"
+        UsersDatabase::class.java,
+        "users-database"
     ).build()
 }

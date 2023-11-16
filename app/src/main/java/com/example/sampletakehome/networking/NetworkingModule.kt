@@ -23,7 +23,5 @@ object NetworkingModule {
         .build()
 
     @Provides
-    fun providesUsersService(usersRetrofit: Retrofit): UsersService {
-        return usersRetrofit.create(UsersService::class.java)
-    }
+    fun providesUsersService(usersRetrofit: Retrofit): UsersService = usersRetrofit.create(UsersService::class.java)
 }

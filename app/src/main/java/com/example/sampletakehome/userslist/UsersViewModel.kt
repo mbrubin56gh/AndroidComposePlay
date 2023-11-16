@@ -6,53 +6,48 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.example.sampletakehome.User
 import com.example.sampletakehome.repository.UsersRepository
+import com.example.sampletakehome.repository.UsersRepository.UsersResult
+import com.example.sampletakehome.userslist.UsersUIState.Fetched
+import com.example.sampletakehome.userslist.UsersUIState.Fetching
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import logcat.logcat
+
+sealed class UsersUIState {
+    object Fetching : UsersUIState()
+    sealed class Fetched : UsersUIState() {
+        abstract val users: List<User>
+
+        class Success(override val users: List<User>) : Fetched()
+        class Error(override val users: List<User>) : Fetched()
+    }
+}
 
 class UsersViewModel(
     private val usersRepository: UsersRepository,
 ) : ViewModel() {
-    sealed class UsersUIState {
-        object Fetching : UsersUIState()
-        sealed class Fetched : UsersUIState() {
-            class Success(val users: List<User>) : UsersUIState()
-            object Error : UsersUIState()
-        }
-    }
-
-    private val _usersUiState: MutableStateFlow<UsersUIState> =
-        MutableStateFlow(UsersUIState.Fetching)
+    private val _usersUiState: MutableStateFlow<UsersUIState> = MutableStateFlow(Fetching)
     val usersUiState = _usersUiState.asStateFlow()
 
     init {
-        viewModelScope.launch {
-            usersRepository.users().collect { users ->
-                _usersUiState.value = UsersUIState.Fetched.Success(users)
-            }
-        }
-        viewModelScope.launch { refreshUsers() }
+        seedUsers()
     }
 
-    suspend fun refreshUsers() {
-        // Should do something special with network errors: if we have data from the db,
-        // then don't show an error state and just log, send to analytics, etc. Otherwise, do
-        // show it. We could do something like below. Starting to get a bit state-machine like,
-        // so could go in its own method implementing an all-in-one location for state machines
-        // or use Square's Workflow, etc.
-        try {
-            usersRepository.refreshUsers()
-        } catch (e: Exception) {
-            if (_usersUiState.value is UsersUIState.Fetching) {
-                _usersUiState.value = UsersUIState.Fetched.Error
-            } else {
-                logcat { "Error refreshing users." }
-            }
-        }
-    }
+    suspend fun refreshUsers() = usersRepository.refreshUsers()
 
     suspend fun getUser(userId: Long): User = usersRepository.getUser(userId)
+
+    private fun seedUsers() {
+        viewModelScope.launch {
+            usersRepository.refreshUsers()
+            usersRepository.users().collect { usersResult ->
+                _usersUiState.value = when (usersResult) {
+                    is UsersResult.Success -> Fetched.Success(usersResult.users)
+                    is UsersResult.WithNetworkError -> Fetched.Error(usersResult.users)
+                }
+            }
+        }
+    }
 
     class Factory(private val usersRepository: UsersRepository) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")

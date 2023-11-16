@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -15,15 +16,17 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.Divider
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -35,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Alignment.Companion.CenterVertically
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.ColorPainter
@@ -46,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NamedNavArgument
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -58,9 +63,6 @@ import com.example.sampletakehome.R
 import com.example.sampletakehome.SampleUsersApplication.Companion.applicationComponent
 import com.example.sampletakehome.User
 import com.example.sampletakehome.theme.MyApplicationTheme
-import com.example.sampletakehome.userslist.Route.USER
-import com.example.sampletakehome.userslist.Route.USERS
-import com.example.sampletakehome.userslist.UsersViewModel.UsersUIState
 import kotlinx.coroutines.launch
 
 class UsersActivity : ComponentActivity() {
@@ -68,38 +70,45 @@ class UsersActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             MyApplicationTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    val viewModel = viewModel<UsersViewModel>(
-                        factory = UsersViewModel.Factory(applicationComponent.usersRepository())
-                    )
-                    val navController = rememberNavController()
-                    Navigation(
-                        modifier = Modifier,
-                        navController = navController,
-                        usersUIState = viewModel.usersUiState.collectAsStateWithLifecycle().value,
-                        getUser = viewModel::getUser,
-                        onSelectedUser = { user -> navController.navigate(Route.pathFromUserId(user.id)) },
-                        onRefreshUsers = viewModel::refreshUsers
-                    )
-                }
+                val viewModel = viewModel<UsersViewModel>(
+                    factory = UsersViewModel.Factory(applicationComponent.usersRepository())
+                )
+                val navController = rememberNavController()
+                Navigation(
+                    modifier = Modifier,
+                    navController = navController,
+                    usersUIState = viewModel.usersUiState.collectAsStateWithLifecycle().value,
+                    getUser = viewModel::getUser,
+                    onSelectedUser = { user ->
+                        navController.navigate(Routes.User.pathFromUserId(user.id))
+                    },
+                    onRefreshUsers = viewModel::refreshUsers
+                )
             }
         }
     }
 }
 
-enum class Route(
-    val routeName: String,
-    val arguments: List<NamedNavArgument> = emptyList()
-) {
-    USERS("users"),
-    USER(
-        "user/{userId}", listOf(navArgument("userId") { type = NavType.LongType })
-    );
+private sealed class Routes {
+    abstract val routeName: String
+    abstract val arguments: List<NamedNavArgument>
 
-    companion object {
+    object Users : Routes() {
+        override val routeName = "user"
+        override val arguments: List<NamedNavArgument> = emptyList()
+    }
+
+    object User : Routes() {
+        private const val USERID_PATH = "userId"
+
+        override val routeName = "user/{$USERID_PATH}"
+        override val arguments = listOf(navArgument(USERID_PATH) { type = NavType.LongType })
+        fun userId(backStackEntry: NavBackStackEntry): Long {
+            return checkNotNull(backStackEntry.arguments?.getLong(USERID_PATH)) {
+                "Missing userId from backstack"
+            }
+        }
+
         fun pathFromUserId(userId: Long): String = "user/$userId"
     }
 }
@@ -113,21 +122,18 @@ fun Navigation(
     onSelectedUser: (User) -> Unit,
     getUser: suspend (Long) -> User
 ) {
-    NavHost(navController = navController, startDestination = USERS.routeName) {
-        composable(route = USERS.routeName, arguments = USERS.arguments) {
+    NavHost(navController = navController, startDestination = Routes.Users.routeName) {
+        composable(route = Routes.Users.routeName, arguments = Routes.Users.arguments) {
             Users(
-                modifier,
-                usersUIState,
+                modifier = modifier,
+                usersUIState = usersUIState,
                 onRefreshUsers = onRefreshUsers,
                 onSelectedUser = onSelectedUser
             )
         }
-        composable(USER.routeName, USER.arguments) { backStackEntry ->
-            val userId = requireNotNull(backStackEntry.arguments?.getLong("userId")) {
-                "No userId specified when requesting navigation to a user detail view"
-            }
+        composable(Routes.User.routeName, Routes.User.arguments) { backStackEntry ->
             UserDetail(
-                userId = userId,
+                userId = Routes.User.userId(backStackEntry),
                 getUser = getUser
             )
         }
@@ -137,31 +143,64 @@ fun Navigation(
 @Composable
 fun Users(
     modifier: Modifier = Modifier,
-    userUiState: UsersUIState,
+    usersUIState: UsersUIState,
     onRefreshUsers: suspend () -> Unit,
     onSelectedUser: (User) -> Unit
 ) {
-    when (userUiState) {
-        UsersUIState.Fetched.Error -> FetchErrorMessage(modifier)
+    when (usersUIState) {
         UsersUIState.Fetching -> FetchingProgressBar(modifier)
-        is UsersUIState.Fetched.Success -> {
-            UsersList(
-                modifier = modifier,
-                users = userUiState.users,
-                onUserClicked = onSelectedUser,
-                refreshUsers = onRefreshUsers
-            )
+        is UsersUIState.Fetched -> {
+            val userList = @Composable {
+                UsersList(
+                    modifier = modifier,
+                    users = usersUIState.users,
+                    onUserClicked = onSelectedUser,
+                    refreshUsers = onRefreshUsers
+                )
+            }
+            when (usersUIState) {
+                is UsersUIState.Fetched.Error -> if (usersUIState.users.isNotEmpty()) {
+                    userList()
+                } else {
+                    FetchErrorMessage(modifier, onRefreshUsers)
+                }
+
+                is UsersUIState.Fetched.Success -> userList()
+            }
         }
     }
 }
 
-@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun UsersList(
     modifier: Modifier = Modifier,
     users: List<User> = emptyList(),
     onUserClicked: (User) -> Unit,
     refreshUsers: suspend () -> Unit
+) {
+    UsersRefresher(modifier = modifier, refreshUsers = refreshUsers) {
+        LazyColumn {
+            itemsIndexed(items = users, key = { _, user -> user.id }) { index, user ->
+                User(
+                    modifier = modifier,
+                    user = user,
+                    onUserClicked = onUserClicked
+                )
+                if (index < users.size - 1) {
+                    Divider(color = Color.Gray, thickness = 1.dp, modifier = Modifier.alpha(.5f))
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterialApi::class)
+@Composable
+fun UsersRefresher(
+    modifier: Modifier = Modifier,
+    makeScrollable: Boolean = false,
+    refreshUsers: suspend () -> Unit,
+    content: @Composable BoxScope.() -> Unit
 ) {
     val refreshScope = rememberCoroutineScope()
     var refreshing by remember { mutableStateOf(false) }
@@ -177,16 +216,9 @@ fun UsersList(
         modifier = modifier
             .fillMaxSize()
             .pullRefresh(refreshState)
+            .then(if (makeScrollable) Modifier.verticalScroll(rememberScrollState()) else Modifier)
     ) {
-        LazyColumn(modifier = modifier) {
-            items(items = users, key = { it.id }) { user ->
-                User(
-                    modifier = modifier,
-                    user = user,
-                    onUserClicked = onUserClicked
-                )
-            }
-        }
+        content()
 
         PullRefreshIndicator(
             refreshing = refreshing,
@@ -201,7 +233,7 @@ fun UserDetail(
     userId: Long,
     getUser: suspend (Long) -> User
 ) {
-    val user: User? by produceState(initialValue = null as User?, key1 = userId) {
+    val user by produceState<User?>(initialValue = null, key1 = userId) {
         value = getUser(userId)
     }
     user?.let { User(user = it) } ?: CircularProgressIndicator()
@@ -217,10 +249,11 @@ fun User(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(max = 96.dp)
-            .clickable { onUserClicked(user) },
+            .clickable { onUserClicked(user) }
+            .padding(vertical = 4.dp),
         verticalAlignment = CenterVertically,
     ) {
-        UserImage(modifier = modifier, url = requireNotNull(user.imageUrl) { "Image url was null" })
+        UserImage(modifier = modifier.align(CenterVertically), url = requireNotNull(user.imageUrl) { "Image url was null" })
         Spacer(modifier = modifier.width(12.dp))
         UserLabel(modifier = modifier.align(CenterVertically), name = user.firstName)
     }
@@ -250,13 +283,18 @@ fun UserLabel(
     name: String
 ) {
     Text(
-        modifier = modifier, text = name, style = MaterialTheme.typography.displaySmall
+        modifier = modifier,
+        text = name,
+        style = MaterialTheme.typography.displaySmall
     )
 }
 
 @Composable
-fun FetchErrorMessage(modifier: Modifier = Modifier) {
-    Box(modifier = modifier.fillMaxSize()) {
+fun FetchErrorMessage(
+    modifier: Modifier = Modifier,
+    onRefreshUsers: suspend () -> Unit
+) {
+    UsersRefresher(refreshUsers = onRefreshUsers, makeScrollable = true) {
         Text(
             modifier = modifier.align(Alignment.Center),
             text = stringResource(R.string.error_fetching_contacts),
