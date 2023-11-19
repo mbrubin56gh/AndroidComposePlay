@@ -1,17 +1,12 @@
 package com.example.sampletakehome.dependencygraph
 
-import com.example.sampletakehome.networking.NetworkingModule
-import com.example.sampletakehome.repository.UsersRepository
-import dagger.Component
-import javax.inject.Scope
-import kotlin.annotation.AnnotationRetention.RUNTIME
+import com.squareup.anvil.annotations.MergeComponent
+import kotlin.reflect.KClass
 
-@ApplicationScope
-@Component(modules = [ApplicationModule::class, NetworkingModule::class])
-interface ApplicationComponent {
-    fun usersRepository(): UsersRepository
-}
+@SingleIn(AppScope::class)
+@MergeComponent(AppScope::class)
+interface ApplicationComponent
 
-@Scope
-@Retention(RUNTIME)
-annotation class ApplicationScope
+abstract class AppScope private constructor()
+
+annotation class SingleIn(val scope: KClass<*>)

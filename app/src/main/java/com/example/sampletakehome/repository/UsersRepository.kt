@@ -3,14 +3,21 @@ package com.example.sampletakehome.repository
 import com.example.sampletakehome.User
 import com.example.sampletakehome.database.UserEntity
 import com.example.sampletakehome.database.UsersDatabase
+import com.example.sampletakehome.dependencygraph.AppScope
 import com.example.sampletakehome.networking.UserNetworkModel
 import com.example.sampletakehome.networking.UsersService
 import com.example.sampletakehome.repository.UsersRepository.UsersResult.Success
 import com.example.sampletakehome.repository.UsersRepository.UsersResult.WithNetworkError
+import com.squareup.anvil.annotations.ContributesTo
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
+
+@ContributesTo(AppScope::class)
+interface UsersRepositoryComponentInterface {
+    fun usersRepository(): UsersRepository
+}
 
 class UsersRepository @Inject constructor(
     private val usersService: UsersService,

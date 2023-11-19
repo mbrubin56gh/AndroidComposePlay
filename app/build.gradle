@@ -1,6 +1,7 @@
 plugins {
     id 'com.android.application'
     id 'com.google.devtools.ksp'
+    id 'com.squareup.anvil' version "2.4.8"
     id 'kotlin-kapt'
     id 'org.jetbrains.kotlin.android'
 }

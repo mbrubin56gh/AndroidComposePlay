@@ -1,5 +1,7 @@
 package com.example.sampletakehome.networking
 
+import com.example.sampletakehome.dependencygraph.AppScope
+import com.squareup.anvil.annotations.ContributesTo
 import com.squareup.moshi.Moshi
 import dagger.Module
 import dagger.Provides
@@ -8,6 +10,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 
 @Module
+@ContributesTo(AppScope::class)
 object NetworkingModule {
     @Provides
     fun providesMoshi(): Moshi = Moshi.Builder().build()
