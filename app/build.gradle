@@ -2,6 +2,7 @@ plugins {
     id 'com.android.application'
     id 'com.google.devtools.ksp'
     id 'com.squareup.anvil' version "2.4.8"
+    id 'kotlin-parcelize'
     id 'kotlin-kapt'
     id 'org.jetbrains.kotlin.android'
 }
@@ -58,15 +59,18 @@ dependencies {
     implementation 'androidx.room:room-ktx:2.6.0'
     implementation 'androidx.room:room-runtime:2.6.0'
     implementation 'com.google.android.material:material:1.10.0'
-    implementation "com.google.dagger:dagger:2.46.1"
+    implementation "com.google.dagger:dagger:2.48.1"
+    implementation 'com.slack.circuit:circuit-foundation:0.16.1'
     implementation 'com.squareup.logcat:logcat:0.1'
     implementation 'com.squareup.moshi:moshi-kotlin:1.14.0'
     implementation "com.squareup.retrofit2:converter-moshi:2.9.0"
     implementation 'com.squareup.retrofit2:retrofit:2.9.0'
     implementation 'io.coil-kt:coil-compose:2.4.0'
 
+    api 'com.slack.circuit:circuit-codegen-annotations:0.16.1'
     kapt "com.google.dagger:dagger-compiler:2.46.1"
     ksp 'androidx.room:room-compiler:2.6.0'
+    ksp 'com.slack.circuit:circuit-codegen:0.16.1'
     ksp 'com.squareup.moshi:moshi-kotlin-codegen:1.14.0'
 
 //    debugImplementation 'androidx.compose.ui:ui-test-manifest'

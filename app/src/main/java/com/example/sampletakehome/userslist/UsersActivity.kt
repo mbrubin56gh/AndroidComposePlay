@@ -29,11 +29,11 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Alignment.Companion.CenterVertically
@@ -47,125 +47,188 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NamedNavArgument
-import androidx.navigation.NavBackStackEntry
-import androidx.navigation.NavHostController
-import androidx.navigation.NavType
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.sampletakehome.R
 import com.example.sampletakehome.SampleUsersApplication.Companion.applicationComponent
 import com.example.sampletakehome.User
+import com.example.sampletakehome.dependencygraph.AppScope
+import com.example.sampletakehome.repository.UsersRepository
+import com.example.sampletakehome.repository.UsersRepository.UsersResult
 import com.example.sampletakehome.theme.MyApplicationTheme
-import kotlinx.coroutines.launch
+import com.example.sampletakehome.userslist.UsersActivity.UserDetailScreen
+import com.example.sampletakehome.userslist.UsersActivity.UsersScreen
+import com.example.sampletakehome.userslist.UsersActivity.UsersScreen.Event
+import com.example.sampletakehome.userslist.UsersActivity.UsersScreen.Event.RefreshUsers
+import com.example.sampletakehome.userslist.UsersActivity.UsersScreen.State.Fetched
+import com.example.sampletakehome.userslist.UsersActivity.UsersScreen.State.Fetching
+import com.slack.circuit.backstack.rememberSaveableBackStack
+import com.slack.circuit.codegen.annotations.CircuitInject
+import com.slack.circuit.foundation.CircuitCompositionLocals
+import com.slack.circuit.foundation.NavigableCircuitContent
+import com.slack.circuit.foundation.rememberCircuitNavigator
+import com.slack.circuit.runtime.CircuitUiEvent
+import com.slack.circuit.runtime.CircuitUiState
+import com.slack.circuit.runtime.Navigator
+import com.slack.circuit.runtime.presenter.Presenter
+import com.slack.circuit.runtime.screen.Screen
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedFactory
+import dagger.assisted.AssistedInject
+import kotlinx.parcelize.Parcelize
+
 
 class UsersActivity : ComponentActivity() {
+    @Parcelize
+    data object UsersScreen : Screen {
+        sealed interface State : CircuitUiState {
+            data object Fetching : State
+            sealed class Fetched : State {
+                abstract val users: List<User>
+                abstract val isRefreshing: Boolean
+                abstract val eventSink: (Event) -> Unit
+
+                class Success(
+                    override val users: List<User>,
+                    override val isRefreshing: Boolean,
+                    override val eventSink: (Event) -> Unit
+                ) : Fetched()
+
+                class Error(
+                    override val users: List<User>,
+                    override val isRefreshing: Boolean,
+                    override val eventSink: (Event) -> Unit
+                ) : Fetched()
+            }
+        }
+
+        sealed interface Event : CircuitUiEvent {
+            data object RefreshUsers : Event
+            data class UserSelected(val userId: Long) : Event
+        }
+    }
+
+    class UsersPresenter @AssistedInject constructor(
+        @Assisted private val navigator: Navigator,
+        private val usersRepository: UsersRepository
+    ) : Presenter<UsersScreen.State> {
+        @CircuitInject(UsersScreen::class, AppScope::class)
+        @AssistedFactory
+        fun interface Factory {
+            fun create(navigator: Navigator): UsersPresenter
+        }
+
+        @Composable
+        override fun present(): UsersScreen.State {
+            var isRefreshing by rememberSaveable { mutableStateOf(false) }
+            if (isRefreshing) {
+                LaunchedEffect(Unit) {
+                    usersRepository.refreshUsers()
+                    isRefreshing = false
+                }
+            }
+
+            val users by produceState<UsersResult?>(initialValue = null) {
+                usersRepository.refreshUsers()
+                usersRepository.users().collect { value = it }
+            }
+            return when (val usersResult = users) {
+                null -> Fetching
+                is UsersResult.Success -> Fetched.Success(
+                    users = usersResult.users,
+                    isRefreshing = isRefreshing
+                ) {
+                    when (it) {
+                        is RefreshUsers -> isRefreshing = true
+                        is Event.UserSelected -> navigator.goTo(UserDetailScreen(it.userId))
+                    }
+                }
+
+                is UsersResult.WithNetworkError -> Fetched.Error(
+                    users = usersResult.users,
+                    isRefreshing = isRefreshing
+                ) {
+                    when (it) {
+                        is RefreshUsers -> isRefreshing = true
+                        is Event.UserSelected -> navigator.goTo(UserDetailScreen(it.userId))
+                    }
+                }
+            }
+        }
+    }
+
+    @Parcelize
+    data class UserDetailScreen(val userId: Long) : Screen {
+        class State(val user: User?) : CircuitUiState
+    }
+
+    class UserDetailPresenter @AssistedInject constructor(
+        @Assisted val screen: UserDetailScreen,
+        private val usersRepository: UsersRepository
+    ) : Presenter<UserDetailScreen.State> {
+
+        @CircuitInject(UserDetailScreen::class, AppScope::class)
+        @AssistedFactory
+        fun interface Factory {
+            fun create(screen: UserDetailScreen): UserDetailPresenter
+        }
+
+        @Composable
+        override fun present(): UserDetailScreen.State {
+            val user by produceState<User?>(initialValue = null) {
+                value = usersRepository.getUser(screen.userId)
+            }
+            return UserDetailScreen.State(user)
+        }
+
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             MyApplicationTheme {
-                val viewModel = viewModel<UsersViewModel>(
-                    factory = UsersViewModel.Factory(applicationComponent.usersRepository())
-                )
-                val navController = rememberNavController()
-                Navigation(
-                    modifier = Modifier,
-                    navController = navController,
-                    usersUIState = viewModel.usersUiState.collectAsStateWithLifecycle().value,
-                    getUser = viewModel::getUser,
-                    onSelectedUser = { user ->
-                        navController.navigate(Routes.User.pathFromUserId(user.id))
-                    },
-                    onRefreshUsers = viewModel::refreshUsers
-                )
+                val backstack = rememberSaveableBackStack { push(UsersScreen) }
+                val navigator = rememberCircuitNavigator(backstack)
+                CircuitCompositionLocals(applicationComponent.circuit()) {
+                    NavigableCircuitContent(
+                        navigator = navigator,
+                        backstack = backstack
+                    )
+                }
             }
         }
     }
 }
 
-private sealed class Routes {
-    abstract val routeName: String
-    abstract val arguments: List<NamedNavArgument>
-
-    object Users : Routes() {
-        override val routeName = "user"
-        override val arguments: List<NamedNavArgument> = emptyList()
-    }
-
-    object User : Routes() {
-        private const val USERID_PATH = "userId"
-
-        override val routeName = "user/{$USERID_PATH}"
-        override val arguments = listOf(navArgument(USERID_PATH) { type = NavType.LongType })
-        fun userId(backStackEntry: NavBackStackEntry): Long {
-            return checkNotNull(backStackEntry.arguments?.getLong(USERID_PATH)) {
-                "Missing userId from backstack"
-            }
-        }
-
-        fun pathFromUserId(userId: Long): String = "user/$userId"
-    }
-}
-
+@CircuitInject(UsersScreen::class, AppScope::class)
 @Composable
-fun Navigation(
-    modifier: Modifier = Modifier,
-    navController: NavHostController,
-    usersUIState: UsersUIState,
-    onRefreshUsers: suspend () -> Unit,
-    onSelectedUser: (User) -> Unit,
-    getUser: suspend (Long) -> User
+fun UsersUi(
+    state: UsersScreen.State,
+    modifier: Modifier = Modifier
 ) {
-    NavHost(navController = navController, startDestination = Routes.Users.routeName) {
-        composable(route = Routes.Users.routeName, arguments = Routes.Users.arguments) {
-            Users(
-                modifier = modifier,
-                usersUIState = usersUIState,
-                onRefreshUsers = onRefreshUsers,
-                onSelectedUser = onSelectedUser
-            )
-        }
-        composable(Routes.User.routeName, Routes.User.arguments) { backStackEntry ->
-            UserDetail(
-                userId = Routes.User.userId(backStackEntry),
-                getUser = getUser
-            )
-        }
-    }
-}
-
-@Composable
-fun Users(
-    modifier: Modifier = Modifier,
-    usersUIState: UsersUIState,
-    onRefreshUsers: suspend () -> Unit,
-    onSelectedUser: (User) -> Unit
-) {
-    when (usersUIState) {
-        UsersUIState.Fetching -> FetchingProgressBar(modifier)
-        is UsersUIState.Fetched -> {
+    when (state) {
+        is Fetching -> FetchingProgressBar(modifier)
+        is Fetched -> {
             val userList = @Composable {
                 UsersList(
                     modifier = modifier,
-                    users = usersUIState.users,
-                    onUserClicked = onSelectedUser,
-                    refreshUsers = onRefreshUsers
+                    users = state.users,
+                    isRefreshing = state.isRefreshing,
+                    eventSink = state.eventSink
                 )
             }
-            when (usersUIState) {
-                is UsersUIState.Fetched.Error -> if (usersUIState.users.isNotEmpty()) {
+            when (state) {
+                is Fetched.Error -> if (state.users.isNotEmpty()) {
                     userList()
                 } else {
-                    FetchErrorMessage(modifier, onRefreshUsers)
+                    FetchErrorMessage(
+                        modifier = modifier,
+                        isRefreshing = state.isRefreshing,
+                        eventSink = state.eventSink
+                    )
                 }
 
-                is UsersUIState.Fetched.Success -> userList()
+                is Fetched.Success -> userList()
             }
         }
     }
@@ -174,20 +237,29 @@ fun Users(
 @Composable
 fun UsersList(
     modifier: Modifier = Modifier,
+    isRefreshing: Boolean = false,
     users: List<User> = emptyList(),
-    onUserClicked: (User) -> Unit,
-    refreshUsers: suspend () -> Unit
+    eventSink: (Event) -> Unit
 ) {
-    UsersRefresher(modifier = modifier, refreshUsers = refreshUsers) {
+    UsersRefresher(
+        modifier = modifier,
+        isRefreshing = isRefreshing,
+        makeScrollable = false,
+        onRefresh = { eventSink(RefreshUsers) }
+    ) {
         LazyColumn {
             itemsIndexed(items = users, key = { _, user -> user.id }) { index, user ->
                 User(
                     modifier = modifier,
                     user = user,
-                    onUserClicked = onUserClicked
+                    onUserClicked = { id -> eventSink(Event.UserSelected(id)) }
                 )
                 if (index < users.size - 1) {
-                    Divider(color = Color.Gray, thickness = 1.dp, modifier = Modifier.alpha(.5f))
+                    Divider(
+                        color = Color.Gray,
+                        thickness = 1.dp,
+                        modifier = Modifier.alpha(.5f)
+                    )
                 }
             }
         }
@@ -198,18 +270,13 @@ fun UsersList(
 @Composable
 fun UsersRefresher(
     modifier: Modifier = Modifier,
+    isRefreshing: Boolean = false,
     makeScrollable: Boolean = false,
-    refreshUsers: suspend () -> Unit,
+    onRefresh: () -> Unit,
     content: @Composable BoxScope.() -> Unit
 ) {
-    val refreshScope = rememberCoroutineScope()
-    var refreshing by remember { mutableStateOf(false) }
-    val refreshState = rememberPullRefreshState(refreshing, {
-        refreshScope.launch {
-            refreshing = true
-            refreshUsers()
-            refreshing = false
-        }
+    val refreshState = rememberPullRefreshState(isRefreshing, {
+        onRefresh()
     })
 
     Box(
@@ -221,39 +288,36 @@ fun UsersRefresher(
         content()
 
         PullRefreshIndicator(
-            refreshing = refreshing,
+            refreshing = isRefreshing,
             state = refreshState,
             modifier = modifier.align(Alignment.TopCenter)
         )
     }
 }
 
+@CircuitInject(UserDetailScreen::class, AppScope::class)
 @Composable
-fun UserDetail(
-    userId: Long,
-    getUser: suspend (Long) -> User
-) {
-    val user by produceState<User?>(initialValue = null, key1 = userId) {
-        value = getUser(userId)
-    }
-    user?.let { User(user = it) } ?: CircularProgressIndicator()
+fun UserDetail(state: UserDetailScreen.State, modifier: Modifier = Modifier) {
+    state.user?.let { User(modifier = modifier, user = it) } ?: CircularProgressIndicator()
 }
 
 @Composable
 fun User(
     modifier: Modifier = Modifier,
     user: User,
-    onUserClicked: (User) -> Unit = {}
+    onUserClicked: (Long) -> Unit = {}
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(max = 96.dp)
-            .clickable { onUserClicked(user) }
+            .clickable { onUserClicked(user.id) }
             .padding(vertical = 4.dp),
         verticalAlignment = CenterVertically,
     ) {
-        UserImage(modifier = modifier.align(CenterVertically), url = requireNotNull(user.imageUrl) { "Image url was null" })
+        UserImage(
+            modifier = modifier.align(CenterVertically),
+            url = requireNotNull(user.imageUrl) { "Image url was null" })
         Spacer(modifier = modifier.width(12.dp))
         UserLabel(modifier = modifier.align(CenterVertically), name = user.firstName)
     }
@@ -292,9 +356,15 @@ fun UserLabel(
 @Composable
 fun FetchErrorMessage(
     modifier: Modifier = Modifier,
-    onRefreshUsers: suspend () -> Unit
+    isRefreshing: Boolean = false,
+    eventSink: (Event) -> Unit
 ) {
-    UsersRefresher(refreshUsers = onRefreshUsers, makeScrollable = true) {
+    UsersRefresher(
+        modifier = modifier,
+        makeScrollable = true,
+        isRefreshing = isRefreshing,
+        onRefresh = { eventSink(RefreshUsers) }
+    ) {
         Text(
             modifier = modifier.align(Alignment.Center),
             text = stringResource(R.string.error_fetching_contacts),

@@ -10,12 +10,13 @@ import dagger.Provides
 
 @Module
 @ContributesTo(AppScope::class)
-class ApplicationModule(private val applicationContext: Context) {
+class ApplicationModule {
     @SingleIn(AppScope::class)
     @Provides
-    fun providesUsersDatabase(): UsersDatabase = Room.databaseBuilder(
-        applicationContext,
-        UsersDatabase::class.java,
-        "users-database"
-    ).build()
+    fun providesUsersDatabase(@ApplicationContext context: Context): UsersDatabase =
+        Room.databaseBuilder(
+            context,
+            UsersDatabase::class.java,
+            "users-database"
+        ).build()
 }
