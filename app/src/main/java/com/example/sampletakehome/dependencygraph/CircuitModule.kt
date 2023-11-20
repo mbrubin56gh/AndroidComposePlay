@@ -9,13 +9,18 @@ import dagger.Provides
 import dagger.multibindings.Multibinds
 
 @ContributesTo(AppScope::class)
+interface CircuitComponentInterface {
+    fun circuit(): Circuit
+}
+
+@ContributesTo(AppScope::class)
 @Module
 interface CircuitModule {
     @Multibinds
-    fun presenterFactories():  @JvmSuppressWildcards Set<Presenter.Factory>
+    fun presenterFactories(): Set<Presenter.Factory>
 
     @Multibinds
-    fun viewFactories():  @JvmSuppressWildcards Set<Ui.Factory>
+    fun viewFactories(): Set<Ui.Factory>
 
     companion object {
         @Provides
@@ -29,9 +34,4 @@ interface CircuitModule {
                 .build()
         }
     }
-}
-
-@ContributesTo(AppScope::class)
-interface CircuitComponentInterface {
-    fun circuit(): Circuit
 }

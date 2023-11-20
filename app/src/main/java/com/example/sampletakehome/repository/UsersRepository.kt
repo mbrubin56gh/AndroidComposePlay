@@ -1,6 +1,5 @@
 package com.example.sampletakehome.repository
 
-import com.example.sampletakehome.User
 import com.example.sampletakehome.database.UserEntity
 import com.example.sampletakehome.database.UsersDatabase
 import com.example.sampletakehome.dependencygraph.AppScope
@@ -18,6 +17,12 @@ import javax.inject.Inject
 interface UsersRepositoryComponentInterface {
     fun usersRepository(): UsersRepository
 }
+
+data class User(
+    val id: Long,
+    val firstName: String,
+    val imageUrl: String
+)
 
 class UsersRepository @Inject constructor(
     private val usersService: UsersService,
@@ -44,7 +49,8 @@ class UsersRepository @Inject constructor(
 
     fun users(): Flow<UsersResult> = usersDatabase.userDao().getAll()
         .map {
-            it.toUsers().let { if (networkError) WithNetworkError(it) else Success(it) }
+            it.toUsers()
+                .let { users -> if (networkError) WithNetworkError(users) else Success(users) }
         }.distinctUntilChanged()
 
     suspend fun getUser(userId: Long) = usersDatabase.userDao().getOne(userId).toUser()
