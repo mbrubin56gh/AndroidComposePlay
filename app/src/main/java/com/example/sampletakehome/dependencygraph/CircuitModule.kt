@@ -17,10 +17,10 @@ interface CircuitComponentInterface {
 @Module
 interface CircuitModule {
     @Multibinds
-    fun presenterFactories(): Set<Presenter.Factory>
+    fun presenterFactories(): @JvmSuppressWildcards Set<Presenter.Factory>
 
     @Multibinds
-    fun viewFactories(): Set<Ui.Factory>
+    fun viewFactories(): @JvmSuppressWildcards Set<Ui.Factory>
 
     companion object {
         @Provides

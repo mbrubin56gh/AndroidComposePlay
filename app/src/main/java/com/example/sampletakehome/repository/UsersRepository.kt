@@ -1,22 +1,15 @@
 package com.example.sampletakehome.repository
 
 import com.example.sampletakehome.database.UserEntity
-import com.example.sampletakehome.database.UsersDatabase
-import com.example.sampletakehome.dependencygraph.AppScope
+import com.example.sampletakehome.database.UsersDao
 import com.example.sampletakehome.networking.UserNetworkModel
 import com.example.sampletakehome.networking.UsersService
 import com.example.sampletakehome.repository.UsersRepository.UsersResult.Success
 import com.example.sampletakehome.repository.UsersRepository.UsersResult.WithNetworkError
-import com.squareup.anvil.annotations.ContributesTo
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
-
-@ContributesTo(AppScope::class)
-interface UsersRepositoryComponentInterface {
-    fun usersRepository(): UsersRepository
-}
 
 data class User(
     val id: Long,
@@ -26,7 +19,7 @@ data class User(
 
 class UsersRepository @Inject constructor(
     private val usersService: UsersService,
-    private val usersDatabase: UsersDatabase
+    private val usersDao: UsersDao
 ) {
     sealed class UsersResult {
         abstract val users: List<User>
@@ -41,29 +34,29 @@ class UsersRepository @Inject constructor(
         try {
             val users = usersService.users()
             networkError = false
-            usersDatabase.userDao().insertAll(users.users.toUserEntities())
+            usersDao.insertAll(users.users.toUserEntities())
         } catch (e: Exception) {
             networkError = true
         }
     }
 
-    fun users(): Flow<UsersResult> = usersDatabase.userDao().getAll()
+    fun users(): Flow<UsersResult> = usersDao.getAll()
         .map {
             it.toUsers()
                 .let { users -> if (networkError) WithNetworkError(users) else Success(users) }
         }.distinctUntilChanged()
 
-    suspend fun getUser(userId: Long) = usersDatabase.userDao().getOne(userId).toUser()
+    suspend fun getUser(userId: Long) = usersDao.getOne(userId).toUser()
 }
 
-private fun UserEntity.toUser(): User = User(id = id, firstName = firstName, imageUrl = imageUrl)
+fun UserEntity.toUser(): User = User(id = id, firstName = firstName, imageUrl = imageUrl)
 
-private fun List<UserEntity>.toUsers() = map { it.toUser() }
+fun List<UserEntity>.toUsers() = map { it.toUser() }
 
-private fun UserNetworkModel.toUserEntity() = UserEntity(
+fun UserNetworkModel.toUserEntity() = UserEntity(
     id = id,
     firstName = firstName,
     imageUrl = imageUrl
 )
 
-private fun List<UserNetworkModel>.toUserEntities() = map { it.toUserEntity() }
+fun List<UserNetworkModel>.toUserEntities() = map { it.toUserEntity() }
