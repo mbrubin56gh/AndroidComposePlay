@@ -20,6 +20,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.sampletakehome.R
@@ -194,7 +196,10 @@ fun FetchErrorMessage(
 
 @Composable
 fun FetchingProgressBar(modifier: Modifier = Modifier) {
+    val content = stringResource(R.string.loading_users_content_description)
     Box(modifier = modifier.fillMaxSize()) {
-        CircularProgressIndicator(modifier.align(Alignment.Center))
-    }
+        CircularProgressIndicator(
+            modifier
+                .align(Alignment.Center)
+                .semantics { contentDescription = content }) }
 }

@@ -20,11 +20,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.example.sampletakehome.R
 import com.example.sampletakehome.repository.User
 
 @Composable
@@ -42,6 +40,7 @@ fun User(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         UserImage(
+            contentDescription= user.firstName,
             modifier = modifier.align(Alignment.CenterVertically),
             url = requireNotNull(user.imageUrl) { "Image url was null" })
         Spacer(modifier = modifier.width(12.dp))
@@ -51,13 +50,14 @@ fun User(
 
 @Composable
 fun UserImage(
+    contentDescription: String,
     modifier: Modifier = Modifier,
     url: String
 ) {
     AsyncImage(
         model = ImageRequest.Builder(LocalContext.current).data(url).crossfade(true).build(),
         placeholder = ColorPainter(Color.Gray),
-        contentDescription = stringResource(R.string.user_image_content_description),
+        contentDescription = contentDescription,
         contentScale = ContentScale.Crop,
         modifier = modifier
             .padding(4.dp)

@@ -5,6 +5,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import com.example.sampletakehome.R
 import com.example.sampletakehome.dependencygraph.AppScope
 import com.example.sampletakehome.generalui.User
 import com.example.sampletakehome.repository.User
@@ -46,5 +50,11 @@ class UserDetailPresenter @AssistedInject constructor(
 @CircuitInject(UserDetailScreen::class, AppScope::class)
 @Composable
 fun UserDetail(state: UserDetailScreen.State, modifier: Modifier = Modifier) {
-    state.user?.let { User(modifier = modifier, user = it) } ?: CircularProgressIndicator()
+    state.user?.let { User(modifier = modifier, user = it) } ?: UserDetailProgressIndicator()
+}
+
+@Composable
+fun UserDetailProgressIndicator(modifier: Modifier = Modifier) {
+    val content = stringResource(R.string.loading_user_content_description)
+    CircularProgressIndicator(modifier = modifier.semantics { contentDescription = content })
 }
