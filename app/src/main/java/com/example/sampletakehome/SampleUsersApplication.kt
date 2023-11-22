@@ -3,7 +3,7 @@ package com.example.sampletakehome
 import android.app.Application
 import com.example.sampletakehome.dependencygraph.ApplicationComponent
 
-class SampleUsersApplication : Application() {
+open class SampleUsersApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         applicationComponent = ApplicationComponent.create(this)
