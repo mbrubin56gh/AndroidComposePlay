@@ -7,7 +7,6 @@ import com.example.sampletakehome.networking.UsersService
 import com.example.sampletakehome.repository.UsersRepository.UsersResult.Success
 import com.example.sampletakehome.repository.UsersRepository.UsersResult.WithNetworkError
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
@@ -22,10 +21,9 @@ class UsersRepository @Inject constructor(
     private val usersDao: UsersDao
 ) {
     sealed class UsersResult {
-        abstract val users: List<User>
-
-        data class WithNetworkError(override val users: List<User>) : UsersResult()
-        data class Success(override val users: List<User>) : UsersResult()
+        data object NotInitialized : UsersResult()
+        data class WithNetworkError(val users: List<User>) : UsersResult()
+        data class Success(val users: List<User>) : UsersResult()
     }
 
     private var networkError = false
@@ -44,7 +42,7 @@ class UsersRepository @Inject constructor(
         .map {
             it.toUsers()
                 .let { users -> if (networkError) WithNetworkError(users) else Success(users) }
-        }.distinctUntilChanged()
+        }
 
     suspend fun getUser(userId: Long) = usersDao.getOne(userId).toUser()
 }

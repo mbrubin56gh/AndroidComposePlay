@@ -12,8 +12,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,6 +31,7 @@ import com.example.sampletakehome.repository.User
 import com.example.sampletakehome.repository.UsersRepository
 import com.example.sampletakehome.repository.UsersRepository.UsersResult
 import com.slack.circuit.codegen.annotations.CircuitInject
+import com.slack.circuit.retained.rememberRetained
 import com.slack.circuit.runtime.CircuitUiEvent
 import com.slack.circuit.runtime.CircuitUiState
 import com.slack.circuit.runtime.Navigator
@@ -83,7 +82,7 @@ class UsersPresenter @AssistedInject constructor(
 
     @Composable
     override fun present(): UsersScreen.State {
-        var isRefreshing by rememberSaveable { mutableStateOf(false) }
+        var isRefreshing by rememberRetained { mutableStateOf(false) }
         if (isRefreshing) {
             LaunchedEffect(Unit) {
                 usersRepository.refreshUsers()
@@ -91,12 +90,17 @@ class UsersPresenter @AssistedInject constructor(
             }
         }
 
-        val users by produceState<UsersResult?>(initialValue = null) {
-            usersRepository.refreshUsers()
-            usersRepository.users().collect { value = it }
+        var users: UsersResult by rememberRetained { mutableStateOf(UsersResult.NotInitialized) }
+        if (users is UsersResult.NotInitialized) {
+            LaunchedEffect(Unit) {
+                usersRepository.refreshUsers()
+                usersRepository.users().collect { users = it }
+            }
         }
+
         return when (val usersResult = users) {
-            null -> UsersScreen.State.Fetching
+            UsersResult.NotInitialized -> UsersScreen.State.Fetching
+
             is UsersResult.Success -> UsersScreen.State.Fetched.Success(
                 users = usersResult.users, isRefreshing = isRefreshing
             ) {
@@ -201,5 +205,6 @@ fun FetchingProgressBar(modifier: Modifier = Modifier) {
         CircularProgressIndicator(
             modifier
                 .align(Alignment.Center)
-                .semantics { contentDescription = content }) }
+                .semantics { contentDescription = content })
+    }
 }
