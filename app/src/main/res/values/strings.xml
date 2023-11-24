@@ -1,6 +1,7 @@
 <resources>
-    <string name="app_name">SampleTakeHome</string>
-    <string name="error_fetching_contacts">Error fetching contacts</string>
+    <string name="app_name">Android Playground</string>
+    <string name="error_fetching_users">Error fetching users</string>
+    <string name="no_users">No users to display</string>
     <string name="user_image_content_description">A user\'s image</string>
     <string name="loading_user_content_description">Loading user</string>
     <string name="loading_users_content_description">Loading users</string>

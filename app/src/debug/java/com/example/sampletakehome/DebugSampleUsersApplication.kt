@@ -9,7 +9,11 @@ import com.facebook.soloader.SoLoader
 class DebugSampleUsersApplication : SampleUsersApplication() {
     override fun onCreate() {
         super.onCreate()
-        initializeFlipper(this)
+        // Super annoying. FLipper's soLoader throws on a background thread
+        // when the unit tests are run.
+        if (!isUnitTesting()) {
+            initializeFlipper(this)
+        }
     }
 
     private fun initializeFlipper(context: Context) {
@@ -19,5 +23,13 @@ class DebugSampleUsersApplication : SampleUsersApplication() {
             addPlugin(InspectorFlipperPlugin(context, DescriptorMapping.withDefaults()))
             addPlugin(plugin)
         }.start()
+    }
+
+    private fun isUnitTesting(): Boolean {
+        return try {
+            Class.forName("org.junit.Test") is Class
+        } catch (e: ClassNotFoundException) {
+            false
+        }
     }
 }

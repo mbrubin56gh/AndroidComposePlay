@@ -138,18 +138,20 @@ fun UsersUi(
                     eventSink = state.eventSink
                 )
             }
-            when (state) {
-                is UsersScreen.State.Fetched.Error -> if (state.users.isNotEmpty()) {
-                    userList()
+            if (state.users.isNotEmpty()) {
+                userList()
+            } else {
+                val messageId = if (state is UsersScreen.State.Fetched.Error) {
+                    R.string.error_fetching_users
                 } else {
-                    FetchErrorMessage(
-                        modifier = modifier,
-                        isRefreshing = state.isRefreshing,
-                        eventSink = state.eventSink
-                    )
+                    R.string.no_users
                 }
-
-                is UsersScreen.State.Fetched.Success -> userList()
+                NoUsersFetchedResult(
+                    modifier = modifier,
+                    isRefreshing = state.isRefreshing,
+                    message = stringResource(messageId),
+                    eventSink = state.eventSink
+                )
             }
         }
     }
@@ -182,8 +184,11 @@ fun UsersList(
 }
 
 @Composable
-fun FetchErrorMessage(
-    modifier: Modifier = Modifier, isRefreshing: Boolean = false, eventSink: (Event) -> Unit
+fun NoUsersFetchedResult(
+    modifier: Modifier = Modifier,
+    isRefreshing: Boolean = false,
+    message: String = "",
+    eventSink: (Event) -> Unit
 ) {
     UsersRefresher(modifier = modifier,
         makeScrollable = true,
@@ -191,7 +196,7 @@ fun FetchErrorMessage(
         onRefresh = { eventSink(Event.RefreshUsers) }) {
         Text(
             modifier = modifier.align(Alignment.Center),
-            text = stringResource(R.string.error_fetching_contacts),
+            text = message,
             textAlign = TextAlign.Center,
             style = MaterialTheme.typography.bodyLarge
         )

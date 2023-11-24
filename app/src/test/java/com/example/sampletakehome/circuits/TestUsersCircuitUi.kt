@@ -22,12 +22,13 @@ class TestUsersCircuitUi {
                 UsersUi(state = UsersScreen.State.Fetching)
             }
             onNodeWithContentDescription("Loading users").assertIsDisplayed()
-            onNodeWithText("Error fetching contacts").assertDoesNotExist()
+            onNodeWithText("Error fetching users").assertDoesNotExist()
+            onNodeWithText("No users to display").assertDoesNotExist()
         }
     }
 
     @Test
-    fun users_shows_error_with_no_users() {
+    fun users_shows_error_when_network_error() {
         composeTestRule.run {
             setContent {
                 UsersUi(
@@ -37,7 +38,24 @@ class TestUsersCircuitUi {
                         eventSink = {})
                 )
             }
-            onNodeWithText("Error fetching contacts").assertIsDisplayed()
+            onNodeWithText("Error fetching users").assertIsDisplayed()
+            onNodeWithContentDescription("Loading users").assertDoesNotExist()
+        }
+    }
+
+    @Test
+    fun users_shows_message_when_empty_users() {
+        composeTestRule.run {
+            setContent {
+                UsersUi(
+                    state = UsersScreen.State.Fetched.Success(
+                        users = emptyList(),
+                        isRefreshing = false,
+                        eventSink = {})
+                )
+            }
+            onNodeWithText("Error fetching users").assertDoesNotExist()
+            onNodeWithText("No users to display").assertIsDisplayed()
             onNodeWithContentDescription("Loading users").assertDoesNotExist()
         }
     }
@@ -61,7 +79,8 @@ class TestUsersCircuitUi {
             }
             onNodeWithContentDescription("FirstName").assertIsDisplayed()
             onNodeWithText("FirstName").assertIsDisplayed()
-            onNodeWithText("Error fetching contacts").assertDoesNotExist()
+            onNodeWithText("Error fetching users").assertDoesNotExist()
+            onNodeWithText("No users to display").assertDoesNotExist()
             onNodeWithContentDescription("Loading users").assertDoesNotExist()
         }
     }
@@ -95,7 +114,8 @@ class TestUsersCircuitUi {
             onNodeWithContentDescription("SecondName").assertIsDisplayed()
             onNodeWithText("SecondName").assertIsDisplayed()
 
-            onNodeWithText("Error fetching contacts").assertDoesNotExist()
+            onNodeWithText("Error fetching users").assertDoesNotExist()
+            onNodeWithText("No users to display").assertDoesNotExist()
             onNodeWithContentDescription("Loading users").assertDoesNotExist()
 
         }
