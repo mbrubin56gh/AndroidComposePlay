@@ -7,12 +7,6 @@ import com.squareup.anvil.annotations.ContributesTo
 import dagger.Module
 import dagger.Provides
 
-@ContributesTo(AppScope::class)
-interface UsersRepositoryComponentInterface {
-    fun usersRepository(): UsersRepository
-}
-
-
 @Module
 @ContributesTo(AppScope::class)
 object UsersRepositoryModule {
