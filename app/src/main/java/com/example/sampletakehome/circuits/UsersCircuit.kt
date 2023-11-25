@@ -72,7 +72,8 @@ data object UsersScreen : Screen {
 }
 
 class UsersPresenter @AssistedInject constructor(
-    @Assisted private val navigator: Navigator, private val usersRepository: UsersRepository
+    @Assisted private val navigator: Navigator,
+    private val usersRepository: UsersRepository
 ) : Presenter<UsersScreen.State> {
     @CircuitInject(UsersScreen::class, AppScope::class)
     @AssistedFactory
@@ -98,26 +99,21 @@ class UsersPresenter @AssistedInject constructor(
             }
         }
 
+        fun onEvent(event: Event) = when (event) {
+            is Event.RefreshUsers -> isRefreshing = true
+            is Event.UserSelected -> navigator.goTo(UserDetailScreen(event.userId))
+        }
+
         return when (val usersResult = users) {
             UsersResult.NotInitialized -> UsersScreen.State.Fetching
 
             is UsersResult.Success -> UsersScreen.State.Fetched.Success(
                 users = usersResult.users, isRefreshing = isRefreshing
-            ) {
-                when (it) {
-                    is Event.RefreshUsers -> isRefreshing = true
-                    is Event.UserSelected -> navigator.goTo(UserDetailScreen(it.userId))
-                }
-            }
+            ) { onEvent(it) }
 
             is UsersResult.WithNetworkError -> UsersScreen.State.Fetched.Error(
-                users = usersResult.users, isRefreshing = isRefreshing
-            ) {
-                when (it) {
-                    is Event.RefreshUsers -> isRefreshing = true
-                    is Event.UserSelected -> navigator.goTo(UserDetailScreen(it.userId))
-                }
-            }
+                users = usersResult.users, isRefreshing = isRefreshing, { onEvent(it) }
+            )
         }
     }
 }
