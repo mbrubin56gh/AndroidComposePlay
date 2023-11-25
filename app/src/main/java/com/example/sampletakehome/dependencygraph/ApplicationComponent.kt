@@ -10,9 +10,7 @@ import dagger.Component
 interface ApplicationComponent {
     @Component.Factory
     interface Factory {
-        fun create(
-            @ApplicationContext @BindsInstance context: Context
-        ): ApplicationComponent
+        fun create(@ApplicationContext @BindsInstance context: Context): ApplicationComponent
     }
 
     companion object {
