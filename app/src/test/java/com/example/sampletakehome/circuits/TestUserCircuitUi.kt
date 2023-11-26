@@ -19,7 +19,7 @@ class TestUserCircuitUi {
     fun user_detail_shows_progress_indicator_for_loading_state() {
         composeTestRule.run {
             setContent {
-                UserDetail(UserDetailScreen.State(null))
+                UserDetail(UserDetailScreen.State.Loading)
             }
             onNodeWithContentDescription("Loading user").assertIsDisplayed()
         }
@@ -29,7 +29,15 @@ class TestUserCircuitUi {
     fun user_detail_shows_user() {
         composeTestRule.run {
             setContent {
-                UserDetail(UserDetailScreen.State(User(id = 0, firstName = "FirstName", imageUrl = "bad/path")))
+                UserDetail(
+                    UserDetailScreen.State.HasUser(
+                        User(
+                            id = 0,
+                            firstName = "FirstName",
+                            imageUrl = "bad/path"
+                        )
+                    )
+                )
             }
             onNodeWithContentDescription("FirstName").assertIsDisplayed()
             onNodeWithText("FirstName").assertIsDisplayed()

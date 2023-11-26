@@ -24,6 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.sampletakehome.R
 import com.example.sampletakehome.circuits.UsersScreen.Event
+import com.example.sampletakehome.circuits.UsersScreen.State
 import com.example.sampletakehome.dependencygraph.AppScope
 import com.example.sampletakehome.generalui.User
 import com.example.sampletakehome.generalui.UsersRefresher
@@ -46,10 +47,13 @@ import kotlinx.parcelize.Parcelize
 data object UsersScreen : Screen {
     sealed interface State : CircuitUiState {
         data object Fetching : State
+
         sealed class Fetched : State {
             abstract val users: List<User>
             abstract val isRefreshing: Boolean
             abstract val eventSink: (Event) -> Unit
+
+            fun hasUsers() = users.isNotEmpty()
 
             class Success(
                 override val users: List<User>,
@@ -74,7 +78,7 @@ data object UsersScreen : Screen {
 class UsersPresenter @AssistedInject constructor(
     @Assisted private val navigator: Navigator,
     private val usersRepository: UsersRepository
-) : Presenter<UsersScreen.State> {
+) : Presenter<State> {
     @CircuitInject(UsersScreen::class, AppScope::class)
     @AssistedFactory
     fun interface Factory {
@@ -82,7 +86,7 @@ class UsersPresenter @AssistedInject constructor(
     }
 
     @Composable
-    override fun present(): UsersScreen.State {
+    override fun present(): State {
         var isRefreshing by rememberRetained { mutableStateOf(false) }
         if (isRefreshing) {
             LaunchedEffect(Unit) {
@@ -105,15 +109,15 @@ class UsersPresenter @AssistedInject constructor(
         }
 
         return when (val usersResult = users) {
-            UsersResult.NotInitialized -> UsersScreen.State.Fetching
+            UsersResult.NotInitialized -> State.Fetching
 
-            is UsersResult.Success -> UsersScreen.State.Fetched.Success(
+            is UsersResult.Success -> State.Fetched.Success(
                 users = usersResult.users, isRefreshing = isRefreshing
             ) { onEvent(it) }
 
-            is UsersResult.WithNetworkError -> UsersScreen.State.Fetched.Error(
-                users = usersResult.users, isRefreshing = isRefreshing, { onEvent(it) }
-            )
+            is UsersResult.WithNetworkError -> State.Fetched.Error(
+                users = usersResult.users, isRefreshing = isRefreshing
+            ) { onEvent(it) }
         }
     }
 }
@@ -121,31 +125,30 @@ class UsersPresenter @AssistedInject constructor(
 @CircuitInject(UsersScreen::class, AppScope::class)
 @Composable
 fun UsersUi(
-    state: UsersScreen.State, modifier: Modifier = Modifier
+    state: State,
+    modifier: Modifier = Modifier
 ) {
     when (state) {
-        is UsersScreen.State.Fetching -> FetchingProgressBar(modifier)
-        is UsersScreen.State.Fetched -> {
-            val userList = @Composable {
+        is State.Fetching -> FetchingProgressBar(modifier)
+        is State.Fetched -> {
+            if (state.hasUsers()) {
                 UsersList(
                     modifier = modifier,
                     users = state.users,
                     isRefreshing = state.isRefreshing,
                     eventSink = state.eventSink
                 )
-            }
-            if (state.users.isNotEmpty()) {
-                userList()
             } else {
-                val messageId = if (state is UsersScreen.State.Fetched.Error) {
-                    R.string.error_fetching_users
-                } else {
-                    R.string.no_users
-                }
                 NoUsersFetchedResult(
                     modifier = modifier,
                     isRefreshing = state.isRefreshing,
-                    message = stringResource(messageId),
+                    message = stringResource(
+                        if (state is State.Fetched.Error) {
+                            R.string.error_fetching_users
+                        } else {
+                            R.string.no_users
+                        }
+                    ),
                     eventSink = state.eventSink
                 )
             }

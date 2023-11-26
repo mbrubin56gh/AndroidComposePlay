@@ -13,9 +13,9 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
 @RunWith(RobolectricTestRunner::class)
-class TestUserCircuit {
+class TestUserCircuitPresenter {
     @Test
-    fun userDetailPresenter() = runTest {
+    fun `loading then user`() = runTest {
         val userEntity = UserEntity(id = 0, firstName = "FirstName", imageUrl = "path/to/image")
         val userEntities = listOf(userEntity)
         val usersRepository =
@@ -27,8 +27,8 @@ class TestUserCircuit {
         )
 
         userDetailPresenter.test {
-            assertThat(awaitItem().user).isNull()
-            assertThat(awaitItem().user).isEqualTo(userEntity.toUser())
+            assertThat(awaitItem()).isEqualTo(UserDetailScreen.State.Loading)
+            assertThat(awaitItem()).isEqualTo(UserDetailScreen.State.HasUser(userEntity.toUser()))
         }
     }
 }

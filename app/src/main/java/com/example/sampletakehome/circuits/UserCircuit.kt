@@ -24,7 +24,10 @@ import kotlinx.parcelize.Parcelize
 
 @Parcelize
 data class UserDetailScreen(val userId: Long) : Screen {
-    class State(val user: User?) : CircuitUiState
+    sealed interface State : CircuitUiState {
+        data object Loading : State
+        data class HasUser(val user: User) : State
+    }
 }
 
 class UserDetailPresenter @AssistedInject constructor(
@@ -43,14 +46,17 @@ class UserDetailPresenter @AssistedInject constructor(
         val user by produceState<User?>(initialValue = null) {
             value = usersRepository.getUser(screen.userId)
         }
-        return UserDetailScreen.State(user)
+        return user?.let { UserDetailScreen.State.HasUser(it) } ?: UserDetailScreen.State.Loading
     }
 }
 
 @CircuitInject(UserDetailScreen::class, AppScope::class)
 @Composable
 fun UserDetail(state: UserDetailScreen.State, modifier: Modifier = Modifier) {
-    state.user?.let { User(modifier = modifier, user = it) } ?: UserDetailProgressIndicator()
+    when (state) {
+        is UserDetailScreen.State.HasUser -> User(modifier = modifier, user = state.user)
+        UserDetailScreen.State.Loading -> UserDetailProgressIndicator()
+    }
 }
 
 @Composable

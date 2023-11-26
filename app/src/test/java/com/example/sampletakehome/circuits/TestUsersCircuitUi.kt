@@ -16,7 +16,7 @@ class TestUsersCircuitUi {
     val composeTestRule = createComposeRule()
 
     @Test
-    fun users_shows_progress_indicator_for_loading() {
+    fun `users shows progress indicator for loading`() {
         composeTestRule.run {
             setContent {
                 UsersUi(state = UsersScreen.State.Fetching)
@@ -28,7 +28,7 @@ class TestUsersCircuitUi {
     }
 
     @Test
-    fun users_shows_error_when_network_error() {
+    fun `users shows error when network error`() {
         composeTestRule.run {
             setContent {
                 UsersUi(
@@ -44,7 +44,7 @@ class TestUsersCircuitUi {
     }
 
     @Test
-    fun users_shows_message_when_empty_users() {
+    fun `users shows message when empty users`() {
         composeTestRule.run {
             setContent {
                 UsersUi(
@@ -61,7 +61,7 @@ class TestUsersCircuitUi {
     }
 
     @Test
-    fun users_shows_users_with_error_and_users() {
+    fun `users shows users with error and users`() {
         composeTestRule.run {
             setContent {
                 UsersUi(
@@ -86,7 +86,7 @@ class TestUsersCircuitUi {
     }
 
     @Test
-    fun users_shows_users_with_users() {
+    fun `users shows users with users and no error`() {
         composeTestRule.run {
             setContent {
                 UsersUi(
@@ -117,7 +117,6 @@ class TestUsersCircuitUi {
             onNodeWithText("Error fetching users").assertDoesNotExist()
             onNodeWithText("No users to display").assertDoesNotExist()
             onNodeWithContentDescription("Loading users").assertDoesNotExist()
-
         }
     }
 }
