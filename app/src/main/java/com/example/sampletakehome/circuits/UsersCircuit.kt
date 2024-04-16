@@ -96,7 +96,7 @@ class UsersPresenter @AssistedInject constructor(
         }
 
         var users: UsersResult by rememberRetained { mutableStateOf(UsersResult.NotInitialized) }
-        if (users is UsersResult.NotInitialized) {
+        if (users !is UsersResult.Success) {
             LaunchedEffect(Unit) {
                 usersRepository.refreshUsers()
                 usersRepository.users().collect { users = it }
